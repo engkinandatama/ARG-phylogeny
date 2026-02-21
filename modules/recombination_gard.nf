@@ -31,19 +31,28 @@ process RECOMBINATION_GARD {
 
     script:
     """
-    # Run GARD
-    hyphy gard \
-        --alignment ${alignment} \
-        --srv Yes \
-        --output ${gene_name}_GARD.json
+    NSEQ=\$(grep -c "^>" ${alignment} || true)
 
-    # Parse GARD results and split alignment into partitions
-    mkdir -p ${gene_name}_partitions
-    partition_gard.py \
-        --gard-json ${gene_name}_GARD.json \
-        --alignment ${alignment} \
-        --gene ${gene_name} \
-        --outdir ${gene_name}_partitions
+    if [ "\$NSEQ" -ge 4 ]; then
+        # Run GARD
+        hyphy gard \
+            --alignment ${alignment} \
+            --srv Yes \
+            --output ${gene_name}_GARD.json
+
+        # Parse GARD results and split alignment into partitions
+        mkdir -p ${gene_name}_partitions
+        partition_gard.py \
+            --gard-json ${gene_name}_GARD.json \
+            --alignment ${alignment} \
+            --gene ${gene_name} \
+            --outdir ${gene_name}_partitions
+    else
+        echo "[gard] Only \$NSEQ sequences, skipping GARD (need >=4)"
+        echo '{"breakpoints": [], "skipped": true, "reason": "too_few_sequences"}' > ${gene_name}_GARD.json
+        mkdir -p ${gene_name}_partitions
+        cp ${alignment} ${gene_name}_partitions/${gene_name}_partition_1.fasta
+    fi
     """
 
     stub:
