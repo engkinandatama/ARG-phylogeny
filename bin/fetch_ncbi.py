@@ -82,10 +82,16 @@ def fetch_records(ids, batch_size=100, retries=3):
 def extract_cds(records, gene_name, min_cds_len=90):
     """Extract CDS features from GenBank records."""
     rows = []
+    skipped = 0
     for rec in records:
         cds_features = [f for f in rec.features if f.type == "CDS"]
         for cds in cds_features:
-            seq = str(cds.extract(rec.seq)).upper()
+            # Some NCBI records have undefined sequences (contig references)
+            try:
+                seq = str(cds.extract(rec.seq)).upper()
+            except Exception:
+                skipped += 1
+                continue
 
             # Skip short sequences
             if len(seq) < min_cds_len:
@@ -128,6 +134,8 @@ def extract_cds(records, gene_name, min_cds_len=90):
                 "length_nt": len(seq),
             })
 
+    if skipped:
+        print(f"[{gene_name}] Skipped {skipped} records with undefined sequences")
     print(f"[{gene_name}] Extracted {len(rows)} CDS sequences")
     return rows
 
