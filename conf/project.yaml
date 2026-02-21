@@ -1,0 +1,166 @@
+# =============================================================================
+# ARG Phylogenomics Toolkit — Project Configuration
+# =============================================================================
+# This is the SINGLE configuration file that controls the entire pipeline.
+# To analyze a different organism/gene set: copy this file, edit, and run:
+#   nextflow run main.nf -params-file conf/project.yaml -profile conda
+# =============================================================================
+
+project:
+  name: "ARG-Klebsiella"
+  organism: "Klebsiella pneumoniae"
+  email: "emramadhanal.hanif@gmail.com"    # Required for NCBI Entrez
+
+# =============================================================================
+# Gene Definitions
+# =============================================================================
+genes:
+  # Target ARGs to analyze
+  targets:
+    - name: blaCTX-M
+      query: "(Klebsiella pneumoniae[Organism]) AND blaCTX-M[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: blaSHV
+      query: "(Klebsiella pneumoniae[Organism]) AND blaSHV[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: blaTEM
+      query: "(Klebsiella pneumoniae[Organism]) AND blaTEM[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: oqxA
+      query: "(Klebsiella pneumoniae[Organism]) AND oqxA[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: sul1
+      query: "(Klebsiella pneumoniae[Organism]) AND sul1[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: tetA
+      query: "(Klebsiella pneumoniae[Organism]) AND tetA[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+  # Housekeeping genes for species tree (HGT reference)
+  housekeeping:
+    - name: rpoB
+      query: "(Klebsiella pneumoniae[Organism]) AND rpoB[Gene] AND CDS[Feature key]"
+      max_records: 150
+
+    - name: gyrA
+      query: "(Klebsiella pneumoniae[Organism]) AND gyrA[Gene] AND CDS[Feature key]"
+      max_records: 150
+
+    - name: gapA
+      query: "(Klebsiella pneumoniae[Organism]) AND gapA[Gene] AND CDS[Feature key]"
+      max_records: 150
+
+    - name: rpoD
+      query: "(Klebsiella pneumoniae[Organism]) AND rpoD[Gene] AND CDS[Feature key]"
+      max_records: 150
+
+    - name: infB
+      query: "(Klebsiella pneumoniae[Organism]) AND infB[Gene] AND CDS[Feature key]"
+      max_records: 150
+
+# =============================================================================
+# Analysis Parameters
+# =============================================================================
+analysis:
+  # --- Step 2: CD-HIT Clustering ---
+  clustering:
+    enabled: true
+    identity: 0.99             # Cluster threshold (0.99 = 99% identity)
+    word_size: 10              # cd-hit-est word size for 99% identity
+
+  # --- Step 3: QC / Filter ---
+  qc:
+    min_len_nt: 300            # Minimum nucleotide length
+    max_ambig_pct: 5           # Maximum ambiguous base percentage
+    check_frame: true          # Must be divisible by 3
+    check_internal_stop: true  # Remove sequences with internal stop codons
+
+  # --- Step 4: Codon Alignment ---
+  alignment:
+    protein_guided: true       # Translate → align AA → back-translate
+
+  # --- Step 5: Alignment Trimming ---
+  trimming:
+    tool: trimal               # trimal | clipkit | bmge
+    mode: automated1           # TrimAl heuristic mode
+    save_col_mapping: true     # Save column mapping for position tracking
+
+  # --- Step 6: Alignment QC + Saturation ---
+  alignment_qc:
+    report_stats: true         # Gap%, length, informative sites
+    saturation_test: true      # Xia's substitution saturation test
+    action_if_saturated: warn  # warn | exclude_3rd_pos | use_aa_tree
+
+  # --- Step 7: Phylogeny ---
+  phylogeny:
+    bootstrap: 1000            # UFBoot replicates
+    alrt: 1000                 # SH-aLRT replicates
+    model: MFP                 # ModelFinder Plus
+    seqtype: CODON             # Codon model
+    outgroup_strategy: midpoint  # midpoint | ortholog
+    # Only used if outgroup_strategy = ortholog:
+    outgroup_queries: {}
+
+  # --- Step 9: Selection Analysis ---
+  selection:
+    genetic_code: "Bacterial and Plant Plastid"  # NCBI Code 11 for bacteria
+    methods:
+      - SLAC
+      - FEL
+      - MEME
+      - FUBAR
+      - BUSTED
+      - aBSREL
+      - RELAX
+    p_threshold: 0.05
+    q_threshold: 0.1           # For FDR-corrected q-values
+    recombination_aware: true  # GARD → partition → re-run selection
+
+  # --- Step 10: Multiple Testing Correction ---
+  multiple_testing:
+    method: BH                 # BH (Benjamini-Hochberg) | holm (Holm-Bonferroni)
+
+  # --- Step 12: HGT Detection ---
+  hgt:
+    topology_test: AU          # AU (Approximately Unbiased) test
+    gc_content: true           # Compare GC% vs housekeeping
+    codon_usage: true          # Codon Adaptation Index (CAI)
+
+  # --- Step 13: Variant Naming ---
+  variant_naming:
+    enabled: true
+    database: card             # card | resfinder
+
+  # --- Step 14: Domain Annotation ---
+  domains:
+    tool: hmmer                # hmmscan vs Pfam-A
+    pfam_db: "Pfam-A.hmm"     # Path to local Pfam database
+    overlay_selection: true    # Overlay selected sites on domain map
+
+  # --- Step 16: Co-selection ---
+  co_selection:
+    test: fisher               # Fisher's exact test for co-occurrence
+    visualize: true
+
+  # --- Step 17: Temporal Signal ---
+  temporal:
+    root_to_tip: true          # Root-to-tip regression analysis
+
+# =============================================================================
+# Output Configuration
+# =============================================================================
+output:
+  static_plots: true           # PNG/PDF for papers
+  interactive_plots: true      # HTML (Plotly) for exploration
+  geographic_map: true         # World map of strain distribution
+  tanglegram: true             # Gene tree vs species tree comparison
+  network_format: gexf         # Graph format for Gephi/Cytoscape
+  report_format:
+    - markdown
+    - html
+  methods_paragraph: true      # Auto-generate Methods section text

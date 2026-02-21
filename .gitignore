@@ -1,0 +1,80 @@
+# ===========================
+# Nextflow
+# ===========================
+.nextflow/
+.nextflow.log*
+work/
+.nextflow.pid
+timeline*.html
+report*.html
+trace*.txt
+dag*.dot
+dag*.png
+dag*.svg
+
+# ===========================
+# Data (too large for git)
+# ===========================
+data/
+results/
+figures/
+logs/
+tree/
+
+# ===========================
+# Databases (downloaded locally)
+# ===========================
+db/
+*.hmm
+*.h3m
+*.h3i
+*.h3f
+*.h3p
+
+# ===========================
+# Python
+# ===========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ===========================
+# Environment
+# ===========================
+.env
+.env.local
+
+# ===========================
+# OS
+# ===========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===========================
+# IDE
+# ===========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===========================
+# Conda/Mamba
+# ===========================
+conda-lock.yml
+
+# ===========================
+# Temp files
+# ===========================
+*.tmp
+tmp_*
