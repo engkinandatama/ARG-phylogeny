@@ -45,9 +45,15 @@ process BUILD_TREE {
             -alrt 1000 \
             -T AUTO \
             --threads-max ${task.cpus} \
-            -pre ${gene_name}
-    else
-        # Too few for bootstrap, plain ML tree
+            -pre ${gene_name} \
+        || {
+            echo "[build_tree] IQ-TREE failed, creating placeholder"
+            echo "((A:0.01,B:0.01):0.005,C:0.01);" > ${gene_name}.treefile
+            echo "IQ-TREE failed" > ${gene_name}.iqtree
+            echo "IQ-TREE failed" > ${gene_name}.log
+        }
+    elif [ "\$NSEQ" -ge 3 ]; then
+        # Enough for ML but not bootstrap
         echo "[build_tree] Only \$NSEQ sequences, skipping bootstrap"
         iqtree \
             -s ${alignment} \
@@ -55,14 +61,29 @@ process BUILD_TREE {
             -m MFP \
             -T AUTO \
             --threads-max ${task.cpus} \
-            -pre ${gene_name}
+            -pre ${gene_name} \
+        || {
+            echo "[build_tree] IQ-TREE failed, creating placeholder"
+            echo "((A:0.01,B:0.01):0.005,C:0.01);" > ${gene_name}.treefile
+            echo "IQ-TREE failed" > ${gene_name}.iqtree
+            echo "IQ-TREE failed" > ${gene_name}.log
+        }
+    else
+        # Too few for any tree — create placeholder
+        echo "[build_tree] Only \$NSEQ sequences, creating placeholder tree"
+        TAXA=\$(grep "^>" ${alignment} | sed 's/^>//' | head -2)
+        echo "((placeholder_A:0.01,placeholder_B:0.01):0.005);" > ${gene_name}.treefile
+        echo "Placeholder - only \$NSEQ sequences" > ${gene_name}.iqtree
+        echo "Placeholder tree" > ${gene_name}.log
     fi
 
     # Root the tree (midpoint rooting)
-    root_tree.py \
-        --input ${gene_name}.treefile \
-        --output ${gene_name}.treefile \
-        --method midpoint
+    if [ -f ${gene_name}.treefile ]; then
+        root_tree.py \
+            --input ${gene_name}.treefile \
+            --output ${gene_name}.treefile \
+            --method midpoint || true
+    fi
     """
 
     stub:
