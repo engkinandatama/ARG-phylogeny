@@ -1,0 +1,314 @@
+# ARG Phylogenomics Toolkit — Implementation Plan (Final)
+
+Config-driven Nextflow DSL2 pipeline for evolutionary analysis of antibiotic resistance genes. Reusable for any organism/gene set via single YAML config.
+
+---
+
+## Pipeline Flow
+
+```mermaid
+flowchart TD
+    A["📥 1. NCBI Fetch"] --> B["🔄 2. CD-HIT Clustering"]
+    B --> C["🧹 3. QC / Filter / Dedup"]
+    C --> D["🧬 4. Codon Alignment (MAFFT)"]
+    D --> E["✂️ 5. Alignment Trimming (TrimAl)"]
+    E --> F["📊 6. Alignment QC + Saturation Test"]
+    F --> G["🌳 7. Gene Trees (IQ-TREE2 + rooting)"]
+    G --> H["🔀 8. GARD Recombination"]
+    H -->|"partitions"| I["🧪 9. Selection (HyPhy ×7, Code 11)"]
+    I --> J["📐 10. Multiple Testing Correction"]
+
+    K["🏠 Housekeeping Genes"] --> L["🌲 11. Species Tree"]
+    G --> M["🔄 12. HGT Detection"]
+    L --> M
+    C --> N["🏷️ 13. CARD Variant Naming"]
+
+    E --> O["🔍 14. Domain Annotation (HMMER)"]
+    J --> P["📊 15. Domain-Selection Overlay"]
+    O --> P
+
+    C --> Q["🕸️ 16. Metadata Network + Co-selection"]
+    G --> R["⏱️ 17. Temporal Signal"]
+
+    J --> S["📋 18. Reporting"]
+    M --> S
+    P --> S
+    Q --> S
+    R --> S
+    N --> S
+    F --> S
+    S --> T["📝 Methods Paragraph"]
+    S --> U["🗺️ Geographic Map"]
+    S --> V["🌿 Tanglegram"]
+```
+
+---
+
+## Project Structure
+
+```
+E:\Project\ARG-phylogeny\
+├── main.nf                          # Main workflow
+├── nextflow.config                  # Profiles & resources
+├── modules/
+│   ├── fetch_sequences.nf           # Module 1
+│   ├── cluster_cdhit.nf             # Module 2 (NEW)
+│   ├── qc_filter.nf                 # Module 3
+│   ├── align_codon.nf               # Module 4
+│   ├── trim_alignment.nf            # Module 5 (NEW)
+│   ├── alignment_qc.nf             # Module 6 (NEW: QC stats + saturation)
+│   ├── build_tree.nf                # Module 7 (FIXED: outgroup rooting)
+│   ├── recombination_gard.nf        # Module 8
+│   ├── selection_hyphy.nf           # Module 9 (FIXED: Code 11, partitions)
+│   ├── multiple_testing.nf          # Module 10 (NEW)
+│   ├── species_tree.nf              # Module 11
+│   ├── hgt_detection.nf             # Module 12
+│   ├── variant_naming.nf            # Module 13 (NEW)
+│   ├── domain_annotation.nf         # Module 14
+│   ├── domain_overlay.nf            # Module 15
+│   ├── metadata_network.nf          # Module 16 (ENHANCED: co-selection)
+│   ├── temporal_signal.nf           # Module 17 (NEW)
+│   └── reporting.nf                 # Module 18 (ENHANCED)
+├── bin/
+│   ├── fetch_ncbi.py
+│   ├── qc_sequences.py
+│   ├── codon_align.py
+│   ├── saturation_test.py           # NEW: Xia's test
+│   ├── root_tree.py                 # NEW: midpoint/outgroup rooting
+│   ├── partition_gard.py            # NEW: split alignment by GARD breakpoints
+│   ├── correct_pvalues.py           # NEW: Holm-Bonferroni / FDR
+│   ├── gc_cai_analysis.py
+│   ├── tree_comparison.py
+│   ├── card_lookup.py               # NEW: CARD/ResFinder variant naming
+│   ├── domain_overlay.py            # Static (matplotlib) + Interactive (Plotly)
+│   ├── build_network.py             # ENHANCED: co-selection analysis
+│   ├── temporal_signal.py           # NEW: root-to-tip regression
+│   ├── tanglegram.py                # NEW: gene vs species tree comparison
+│   ├── geo_map.py                   # NEW: geographic distribution
+│   ├── parse_hyphy.py
+│   ├── generate_report.py           # ENHANCED: summary stats
+│   └── generate_methods.py          # NEW: auto methods paragraph
+├── conf/
+│   └── project.yaml                 # ⭐ SINGLE CONFIG
+├── templates/
+│   ├── report.jinja2
+│   └── methods.jinja2               # NEW
+├── containers/
+│   └── environment.yml
+├── test/
+│   └── test_data/
+├── docs/
+│   ├── LEARNING_GUIDE.md
+│   └── PIPELINE_DIAGRAM.md
+├── .gitignore
+└── README.md
+```
+
+---
+
+## Single Config: `conf/project.yaml`
+
+```yaml
+project:
+  name: "ARG-Klebsiella"
+  organism: "Klebsiella pneumoniae"
+  email: "your@email.com"
+
+genes:
+  targets:
+    - name: blaCTX-M
+      query: "(Klebsiella pneumoniae[Organism]) AND blaCTX-M[Gene] AND CDS[Feature key]"
+      max_records: 200
+    # ... more genes
+
+  housekeeping:
+    - name: rpoB
+      query: "..."
+    # ... more housekeeping genes
+
+analysis:
+  clustering:
+    identity: 0.99             # CD-HIT threshold
+    enabled: true
+
+  qc:
+    min_len_nt: 300
+    max_ambig_pct: 5
+
+  alignment:
+    protein_guided: true
+    trimming:
+      tool: trimal              # trimal | clipkit | bmge
+      mode: automated1
+
+  saturation:
+    test: xia                   # Xia's test
+    action_if_saturated: warn   # warn | exclude_3rd_pos | use_aa_tree
+
+  phylogeny:
+    bootstrap: 1000
+    model: MFP
+    outgroup_strategy: midpoint # midpoint | ortholog
+    outgroup_queries: {}        # per-gene outgroup queries if strategy=ortholog
+
+  selection:
+    genetic_code: "Bacterial and Plant Plastid"  # ✅ Code 11
+    methods: [SLAC, FEL, MEME, FUBAR, BUSTED, aBSREL, RELAX]
+    p_threshold: 0.05
+    q_threshold: 0.1
+    recombination_aware: true
+    multiple_testing: BH        # BH (Benjamini-Hochberg) | holm
+
+  hgt:
+    topology_test: AU
+    gc_content: true
+    codon_usage: true
+
+  domains:
+    pfam_db: Pfam-A.hmm
+    overlay_selection: true
+
+  variant_naming:
+    database: card              # card | resfinder
+    enabled: true
+
+  temporal:
+    root_to_tip: true
+
+  co_selection:
+    test: fisher                # Fisher's exact test
+    visualize: true
+
+output:
+  static_plots: true            # PNG/PDF
+  interactive_plots: true       # HTML (Plotly)
+  geographic_map: true
+  tanglegram: true
+  network_format: gexf
+  report_format: [markdown, html]
+  methods_paragraph: true       # Auto-generate Methods text
+```
+
+---
+
+## Module Details
+
+### Modules 1-3: Data Acquisition
+
+| Module | Tool | What it does |
+|--------|------|-------------|
+| 1. Fetch | BioPython/Entrez | Download CDS from NCBI per gene query |
+| 2. CD-HIT | cd-hit-est | Cluster at 99% identity, keep representatives |
+| 3. QC | BioPython | Filter: length, ambiguity, reading frame, stop codons, dedup |
+
+---
+
+### Modules 4-6: Alignment & QC
+
+| Module | Tool | What it does |
+|--------|------|-------------|
+| 4. Align | MAFFT | Protein-guided codon alignment |
+| 5. Trim | TrimAl | Remove poorly aligned/gap-rich regions (`-automated1`) |
+| 6. QC+Sat | Custom Python | Alignment stats + Xia's saturation test per codon position |
+
+> [!IMPORTANT]
+> Module 5 (trimming) saves column mapping so selection site positions can be traced back to original alignment coordinates.
+
+---
+
+### Modules 7-10: Phylogeny & Selection
+
+| Module | Tool | What it does |
+|--------|------|-------------|
+| 7. Trees | IQ-TREE2 | Gene tree with MFP + bootstrap + **rooting** |
+| 8. GARD | HyPhy | Recombination breakpoint detection → partition alignment |
+| 9. Selection | HyPhy (×7) | **Per partition**, **Code 11**, 7 methods in parallel |
+| 10. Correction | Python/statsmodels | Holm-Bonferroni / BH FDR across tests |
+
+> [!CAUTION]
+> **Strict order**: Module 8 (GARD) **must complete** before Module 9 (Selection) starts. Nextflow channel dependency enforces this.
+
+---
+
+### Modules 11-13: Comparative & Naming
+
+| Module | Tool | What it does |
+|--------|------|-------------|
+| 11. Species Tree | MAFFT + IQ-TREE2 | Housekeeping genes → concatenated species tree |
+| 12. HGT | ete3 + IQ-TREE2 + Python | Topology comparison (RF + AU) + parametric (GC + CAI) |
+| 13. Variant Naming | BLAST + CARD | Match sequences to known ARG variant names |
+
+---
+
+### Modules 14-16: Functional & Network
+
+| Module | Tool | What it does |
+|--------|------|-------------|
+| 14. Domains | HMMER (hmmscan) | Pfam domain annotation per gene |
+| 15. Overlay | matplotlib + Plotly | Domain map + selected sites → PNG/PDF + HTML |
+| 16. Network | NetworkX | Strain-gene co-occurrence + co-selection (Fisher's test) |
+
+---
+
+### Modules 17-18: Temporal & Reporting
+
+| Module | Tool | What it does |
+|--------|------|-------------|
+| 17. Temporal | Python | Root-to-tip regression (date vs divergence) |
+| 18. Reporting | Jinja2 + Python | Per-gene report + summary + tanglegram + geo map + methods paragraph |
+
+---
+
+## Verification Plan
+
+### Phase 1: Structure
+```bash
+nextflow run main.nf -stub -profile local    # Validates DAG, no data
+```
+
+### Phase 2: Mini Test
+```bash
+nextflow run main.nf -profile test            # 10 seqs/gene from test_data/
+```
+
+### Phase 3: Full Run
+```bash
+nextflow run main.nf -params-file conf/project.yaml -profile conda
+```
+
+### Validation Checklist
+- [ ] Genetic code = "Bacterial and Plant Plastid" in all HyPhy calls
+- [ ] TrimAl runs before tree building
+- [ ] Trees are rooted (midpoint or outgroup)
+- [ ] GARD completes before selection starts (check DAG)
+- [ ] Multiple testing correction applied to p-values
+- [ ] CD-HIT reduces dataset size meaningfully
+- [ ] Saturation test produces plots for each codon position
+- [ ] Domain overlay has both PNG and HTML output
+- [ ] HGT report shows RF distance + AU p-value + GC% + CAI
+- [ ] Methods paragraph includes all tool versions
+
+---
+
+## Learning Roadmap
+
+| Phase | Modules Built | Nextflow Concepts |
+|:---:|--------|--------------------------|
+| 1 | Fetch + CD-HIT + QC | `process`, `channel`, `publishDir`, `script` |
+| 2 | Align + Trim + AlnQC | Conda/Docker, shell blocks, `path()` |
+| 3 | Tree + GARD | `cpus`/`memory`, `label`, tool containers |
+| 4 | Selection + Correction | `.combine()`, `.join()`, parallel fan-out, **strict ordering** |
+| 5 | Species Tree + HGT | Subworkflows, module reuse, `.collect()` |
+| 6 | Domains + Overlay | Multi-output, file staging, `stageDir` |
+| 7 | Network + Temporal + Naming | `.collectFile()`, `val()`, external DBs |
+| 8 | Reporting + main.nf | Full wiring, `-resume`, DAG viz, `workflow.onComplete` |
+
+---
+
+## Execution Platforms
+
+| Platform | RAM | CPUs | Recommendation |
+|----------|-----|------|----------------|
+| **GitHub Codespaces** | 8 GB | 4 | ⭐ Primary |
+| **Gitpod** | 8 GB | 4 | Alternative |
+| **WSL** | Variable | Variable | Offline |
