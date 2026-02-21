@@ -91,30 +91,19 @@ process CONCAT_AND_BUILD_SPECIES_TREE {
 
     # Check if concatenation produced a valid file
     if [ -s concat_housekeeping.fasta ]; then
-        # Normal path: build tree from concatenated alignment
-        iqtree \
-            -s concat_housekeeping.fasta \
-            --seqtype CODON11 \
-            -m MFP \
-            -bb 1000 \
-            -alrt 1000 \
-            -T AUTO \
-            --threads-max ${task.cpus} \
-            -pre species_ref
-
-        # Root
-        root_tree.py \
-            --input species_ref.treefile \
-            --output species_ref.treefile \
-            --method midpoint
+        INPUT_ALN=concat_housekeeping.fasta
     else
-        # Fallback: no common taxa (HK genes fetched independently)
-        # Build tree from the largest single HK gene alignment
-        BEST_ALN=\$(ls -S *.codon.fasta 2>/dev/null | head -1)
-        if [ -n "\$BEST_ALN" ] && [ -s "\$BEST_ALN" ]; then
-            echo "[species_tree] No common taxa. Using single gene: \$BEST_ALN"
+        # Fallback: use the largest single HK gene alignment
+        INPUT_ALN=\$(ls -S *.codon.fasta 2>/dev/null | head -1)
+    fi
+
+    if [ -n "\$INPUT_ALN" ] && [ -s "\$INPUT_ALN" ]; then
+        NSEQ=\$(grep -c "^>" "\$INPUT_ALN" || true)
+        echo "[species_tree] Using \$INPUT_ALN (\$NSEQ sequences)"
+
+        if [ "\$NSEQ" -ge 4 ]; then
             iqtree \
-                -s "\$BEST_ALN" \
+                -s "\$INPUT_ALN" \
                 --seqtype CODON11 \
                 -m MFP \
                 -bb 1000 \
@@ -122,16 +111,32 @@ process CONCAT_AND_BUILD_SPECIES_TREE {
                 -T AUTO \
                 --threads-max ${task.cpus} \
                 -pre species_ref
+        elif [ "\$NSEQ" -ge 3 ]; then
+            echo "[species_tree] Only \$NSEQ seqs, skipping bootstrap"
+            iqtree \
+                -s "\$INPUT_ALN" \
+                --seqtype CODON11 \
+                -m MFP \
+                -T AUTO \
+                --threads-max ${task.cpus} \
+                -pre species_ref
+        else
+            echo "[species_tree] Only \$NSEQ seqs, creating placeholder tree"
+            echo "((taxon_A:0.01,taxon_B:0.01):0.005,taxon_C:0.01);" > species_ref.treefile
+            echo "Placeholder - too few sequences" > species_ref.iqtree
+        fi
 
+        # Root if treefile was created by iqtree
+        if [ -f species_ref.treefile ] && grep -q ":" species_ref.treefile; then
             root_tree.py \
                 --input species_ref.treefile \
                 --output species_ref.treefile \
                 --method midpoint
-        else
-            echo "[species_tree] WARNING: No usable alignments. Creating placeholder tree."
-            echo "((taxon_A:0.01,taxon_B:0.01):0.005,taxon_C:0.01);" > species_ref.treefile
-            echo "Placeholder tree - no common taxa found" > species_ref.iqtree
         fi
+    else
+        echo "[species_tree] WARNING: No usable alignments. Creating placeholder tree."
+        echo "((taxon_A:0.01,taxon_B:0.01):0.005,taxon_C:0.01);" > species_ref.treefile
+        echo "Placeholder tree - no alignments found" > species_ref.iqtree
     fi
     """
 

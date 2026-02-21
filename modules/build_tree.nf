@@ -32,15 +32,31 @@ process BUILD_TREE {
 
     script:
     """
-    iqtree \
-        -s ${alignment} \
-        --seqtype CODON11 \
-        -m MFP \
-        -bb 1000 \
-        -alrt 1000 \
-        -T AUTO \
-        --threads-max ${task.cpus} \
-        -pre ${gene_name}
+    # Count sequences
+    NSEQ=\$(grep -c "^>" ${alignment} || true)
+
+    if [ "\$NSEQ" -ge 4 ]; then
+        # Enough sequences for bootstrap
+        iqtree \
+            -s ${alignment} \
+            --seqtype CODON11 \
+            -m MFP \
+            -bb 1000 \
+            -alrt 1000 \
+            -T AUTO \
+            --threads-max ${task.cpus} \
+            -pre ${gene_name}
+    else
+        # Too few for bootstrap, plain ML tree
+        echo "[build_tree] Only \$NSEQ sequences, skipping bootstrap"
+        iqtree \
+            -s ${alignment} \
+            --seqtype CODON11 \
+            -m MFP \
+            -T AUTO \
+            --threads-max ${task.cpus} \
+            -pre ${gene_name}
+    fi
 
     # Root the tree (midpoint rooting)
     root_tree.py \
