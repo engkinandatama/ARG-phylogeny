@@ -1,0 +1,111 @@
+# =============================================================================
+# ARG Phylogenomics Toolkit — Mini Test Configuration
+# =============================================================================
+# Lightweight config for testing pipeline logic with minimal data.
+# Uses only 2 target genes + 2 housekeeping genes with max 10 seqs each.
+#
+# Usage:
+#   nextflow run main.nf -params-file conf/test_mini.yaml -profile local
+#   nextflow run main.nf -params-file conf/test_mini.yaml -stub
+# =============================================================================
+
+project:
+  name: "ARG-MiniTest"
+  organism: "Klebsiella pneumoniae"
+  email: "emramadhanal.hanif@gmail.com"
+
+genes:
+  targets:
+    - name: blaCTX-M
+      query: "(Klebsiella pneumoniae[Organism]) AND blaCTX-M[Gene] AND CDS[Feature key]"
+      max_records: 10
+
+    - name: blaKPC
+      query: "(Klebsiella pneumoniae[Organism]) AND blaKPC[Gene] AND CDS[Feature key]"
+      max_records: 10
+
+  housekeeping:
+    - name: rpoB
+      query: "(Klebsiella pneumoniae[Organism]) AND rpoB[Gene] AND CDS[Feature key]"
+      max_records: 10
+
+    - name: gyrA
+      query: "(Klebsiella pneumoniae[Organism]) AND gyrA[Gene] AND CDS[Feature key]"
+      max_records: 10
+
+analysis:
+  clustering:
+    enabled: true
+    identity: 0.99
+    word_size: 10
+
+  qc:
+    min_len_nt: 300
+    max_ambig_pct: 5
+    check_frame: true
+    check_internal_stop: true
+
+  alignment:
+    protein_guided: true
+
+  trimming:
+    tool: trimal
+    mode: automated1
+    save_col_mapping: true
+
+  alignment_qc:
+    report_stats: true
+    saturation_test: true
+    action_if_saturated: warn
+
+  phylogeny:
+    bootstrap: 100           # Lower for speed
+    alrt: 100                # Lower for speed
+    model: MFP
+    seqtype: CODON11
+    outgroup_strategy: midpoint
+
+  selection:
+    genetic_code: 11
+    methods:
+      - SLAC
+      - FEL
+      - MEME
+      - FUBAR
+      - BUSTED
+    p_threshold: 0.05
+    q_threshold: 0.1
+    recombination_aware: true
+
+  multiple_testing:
+    method: BH
+
+  hgt:
+    topology_test: AU
+    gc_content: true
+    codon_usage: true
+
+  variant_naming:
+    enabled: false            # Skip CARD for mini test
+
+  domains:
+    tool: hmmer
+    pfam_db: "Pfam-A.hmm"
+    overlay_selection: false  # Skip for mini test
+
+  co_selection:
+    test: fisher
+    visualize: true
+
+  temporal:
+    root_to_tip: true
+
+output:
+  static_plots: true
+  interactive_plots: false    # Skip for mini test
+  geographic_map: false
+  tanglegram: false
+  network_format: gexf
+  report_format:
+    - markdown
+  methods_paragraph: true

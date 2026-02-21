@@ -16,6 +16,7 @@ project:
 # =============================================================================
 genes:
   # Target ARGs to analyze
+  # ── β-lactamases (ESBLs) ──
   targets:
     - name: blaCTX-M
       query: "(Klebsiella pneumoniae[Organism]) AND blaCTX-M[Gene] AND CDS[Feature key]"
@@ -29,16 +30,41 @@ genes:
       query: "(Klebsiella pneumoniae[Organism]) AND blaTEM[Gene] AND CDS[Feature key]"
       max_records: 200
 
+  # ── Carbapenemases (CRITICAL — #1 clinical concern) ──
+    - name: blaKPC
+      query: "(Klebsiella pneumoniae[Organism]) AND blaKPC[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: blaNDM
+      query: "(Klebsiella pneumoniae[Organism]) AND blaNDM[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+    - name: blaOXA-48
+      query: "(Klebsiella pneumoniae[Organism]) AND (blaOXA-48[Gene] OR blaOXA-181[Gene]) AND CDS[Feature key]"
+      max_records: 200
+
+  # ── Quinolone resistance ──
     - name: oqxA
       query: "(Klebsiella pneumoniae[Organism]) AND oqxA[Gene] AND CDS[Feature key]"
       max_records: 200
 
+    - name: qnrB
+      query: "(Klebsiella pneumoniae[Organism]) AND qnrB[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+  # ── Sulfonamide ──
     - name: sul1
       query: "(Klebsiella pneumoniae[Organism]) AND sul1[Gene] AND CDS[Feature key]"
       max_records: 200
 
+  # ── Tetracycline ──
     - name: tetA
       query: "(Klebsiella pneumoniae[Organism]) AND tetA[Gene] AND CDS[Feature key]"
+      max_records: 200
+
+  # ── Colistin (last resort antibiotic) ──
+    - name: mcr-1
+      query: "(Klebsiella pneumoniae[Organism]) AND mcr-1[Gene] AND CDS[Feature key]"
       max_records: 200
 
   # Housekeeping genes for species tree (HGT reference)
