@@ -32,7 +32,7 @@ process BUILD_TREE {
 
     script:
     """
-    iqtree2 \
+    iqtree \
         -s ${alignment} \
         --seqtype CODON11 \
         -m MFP \
