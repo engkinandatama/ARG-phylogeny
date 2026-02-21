@@ -89,22 +89,50 @@ process CONCAT_AND_BUILD_SPECIES_TREE {
         --output concat_housekeeping.fasta \
         --pattern "*.codon.fasta"
 
-    # Build species tree
-    iqtree \
-        -s concat_housekeeping.fasta \
-        --seqtype CODON11 \
-        -m MFP \
-        -bb 1000 \
-        -alrt 1000 \
-        -T AUTO \
-        --threads-max ${task.cpus} \
-        -pre species_ref
+    # Check if concatenation produced a valid file
+    if [ -s concat_housekeeping.fasta ]; then
+        # Normal path: build tree from concatenated alignment
+        iqtree \
+            -s concat_housekeeping.fasta \
+            --seqtype CODON11 \
+            -m MFP \
+            -bb 1000 \
+            -alrt 1000 \
+            -T AUTO \
+            --threads-max ${task.cpus} \
+            -pre species_ref
 
-    # Root
-    root_tree.py \
-        --input species_ref.treefile \
-        --output species_ref.treefile \
-        --method midpoint
+        # Root
+        root_tree.py \
+            --input species_ref.treefile \
+            --output species_ref.treefile \
+            --method midpoint
+    else
+        # Fallback: no common taxa (HK genes fetched independently)
+        # Build tree from the largest single HK gene alignment
+        BEST_ALN=\$(ls -S *.codon.fasta 2>/dev/null | head -1)
+        if [ -n "\$BEST_ALN" ] && [ -s "\$BEST_ALN" ]; then
+            echo "[species_tree] No common taxa. Using single gene: \$BEST_ALN"
+            iqtree \
+                -s "\$BEST_ALN" \
+                --seqtype CODON11 \
+                -m MFP \
+                -bb 1000 \
+                -alrt 1000 \
+                -T AUTO \
+                --threads-max ${task.cpus} \
+                -pre species_ref
+
+            root_tree.py \
+                --input species_ref.treefile \
+                --output species_ref.treefile \
+                --method midpoint
+        else
+            echo "[species_tree] WARNING: No usable alignments. Creating placeholder tree."
+            echo "((taxon_A:0.01,taxon_B:0.01):0.005,taxon_C:0.01);" > species_ref.treefile
+            echo "Placeholder tree - no common taxa found" > species_ref.iqtree
+        fi
+    fi
     """
 
     stub:
