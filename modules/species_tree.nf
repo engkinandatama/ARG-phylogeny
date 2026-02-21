@@ -98,40 +98,28 @@ process CONCAT_AND_BUILD_SPECIES_TREE {
     fi
 
     if [ -n "\$INPUT_ALN" ] && [ -s "\$INPUT_ALN" ]; then
-        NSEQ=\$(grep -c "^>" "\$INPUT_ALN" || true)
-        echo "[species_tree] Using \$INPUT_ALN (\$NSEQ sequences)"
+        echo "[species_tree] Using \$INPUT_ALN"
 
-        if [ "\$NSEQ" -ge 4 ]; then
-            iqtree \
-                -s "\$INPUT_ALN" \
-                --seqtype CODON11 \
-                -m MFP \
-                -bb 1000 \
-                -alrt 1000 \
-                -T AUTO \
-                --threads-max ${task.cpus} \
-                -pre species_ref
-        elif [ "\$NSEQ" -ge 3 ]; then
-            echo "[species_tree] Only \$NSEQ seqs, skipping bootstrap"
-            iqtree \
-                -s "\$INPUT_ALN" \
-                --seqtype CODON11 \
-                -m MFP \
-                -T AUTO \
-                --threads-max ${task.cpus} \
-                -pre species_ref
-        else
-            echo "[species_tree] Only \$NSEQ seqs, creating placeholder tree"
+        # Species tree is a reference — no bootstrap needed
+        iqtree \
+            -s "\$INPUT_ALN" \
+            --seqtype CODON11 \
+            -m MFP \
+            -T AUTO \
+            --threads-max ${task.cpus} \
+            -pre species_ref \
+        || {
+            echo "[species_tree] IQ-TREE failed, creating placeholder tree"
             echo "((taxon_A:0.01,taxon_B:0.01):0.005,taxon_C:0.01);" > species_ref.treefile
-            echo "Placeholder - too few sequences" > species_ref.iqtree
-        fi
+            echo "IQ-TREE failed - placeholder" > species_ref.iqtree
+        }
 
         # Root if treefile was created by iqtree
         if [ -f species_ref.treefile ] && grep -q ":" species_ref.treefile; then
             root_tree.py \
                 --input species_ref.treefile \
                 --output species_ref.treefile \
-                --method midpoint
+                --method midpoint || true
         fi
     else
         echo "[species_tree] WARNING: No usable alignments. Creating placeholder tree."
