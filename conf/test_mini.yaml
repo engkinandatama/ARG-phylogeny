@@ -18,20 +18,12 @@ genes:
   targets:
     - name: blaCTX-M
       query: "(Klebsiella pneumoniae[Organism]) AND blaCTX-M[Gene] AND CDS[Feature key]"
-      max_records: 10
-
-    - name: blaKPC
-      query: "(Klebsiella pneumoniae[Organism]) AND blaKPC[Gene] AND CDS[Feature key]"
-      max_records: 10
+      max_records: 50
 
   housekeeping:
     - name: rpoB
       query: "(Klebsiella pneumoniae[Organism]) AND rpoB[Gene] AND CDS[Feature key]"
-      max_records: 10
-
-    - name: gyrA
-      query: "(Klebsiella pneumoniae[Organism]) AND gyrA[Gene] AND CDS[Feature key]"
-      max_records: 10
+      max_records: 50
 
 analysis:
   clustering:
