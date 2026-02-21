@@ -34,7 +34,7 @@ process BUILD_TREE {
     """
     iqtree2 \
         -s ${alignment} \
-        --seqtype CODON \
+        --seqtype CODON11 \
         -m MFP \
         -bb 1000 \
         -alrt 1000 \

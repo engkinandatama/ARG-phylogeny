@@ -30,7 +30,7 @@ process SELECTION_SLAC {
     hyphy slac \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --output ${gene_name}_SLAC.json
     """
 
@@ -56,7 +56,7 @@ process SELECTION_FEL {
     hyphy fel \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --output ${gene_name}_FEL.json
     """
 
@@ -82,7 +82,7 @@ process SELECTION_MEME {
     hyphy meme \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --output ${gene_name}_MEME.json
     """
 
@@ -108,7 +108,7 @@ process SELECTION_FUBAR {
     hyphy fubar \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --output ${gene_name}_FUBAR.json
     """
 
@@ -134,7 +134,7 @@ process SELECTION_BUSTED {
     hyphy busted \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --output ${gene_name}_BUSTED.json
     """
 
@@ -160,7 +160,7 @@ process SELECTION_ABSREL {
     hyphy absrel \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --output ${gene_name}_aBSREL.json
     """
 
@@ -186,7 +186,7 @@ process SELECTION_RELAX {
     hyphy relax \
         --alignment ${alignment} \
         --tree ${tree} \
-        --code "Bacterial and Plant Plastid" \
+        --code 11 \
         --test Foreground \
         --output ${gene_name}_RELAX.json
     """

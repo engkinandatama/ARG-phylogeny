@@ -101,14 +101,14 @@ analysis:
     bootstrap: 1000            # UFBoot replicates
     alrt: 1000                 # SH-aLRT replicates
     model: MFP                 # ModelFinder Plus
-    seqtype: CODON             # Codon model
+    seqtype: CODON11            # Codon model with bacterial genetic code
     outgroup_strategy: midpoint  # midpoint | ortholog
     # Only used if outgroup_strategy = ortholog:
     outgroup_queries: {}
 
   # --- Step 9: Selection Analysis ---
   selection:
-    genetic_code: "Bacterial and Plant Plastid"  # NCBI Code 11 for bacteria
+    genetic_code: 11             # NCBI Code 11 (Bacterial, Archaeal and Plant Plastid)
     methods:
       - SLAC
       - FEL

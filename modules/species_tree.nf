@@ -92,7 +92,7 @@ process CONCAT_AND_BUILD_SPECIES_TREE {
     # Build species tree
     iqtree2 \
         -s concat_housekeeping.fasta \
-        --seqtype CODON \
+        --seqtype CODON11 \
         -m MFP \
         -bb 1000 \
         -alrt 1000 \
